@@ -14,18 +14,16 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.objdetect.Objdetect;
 
-import android.util.Log;
 import android.widget.ImageView;
 
 // somewhat based on: http://romanhosek.cz/android-eye-detection-updated-for-opencv-2-4-6/
 public class EyeListener implements CvCameraViewListener2 {
-	
-	private static final String TAG = "UIT::EyeListener";
+	// private static final String TAG = "UIT::EyeListener";
 	private static final Scalar FACE_RECT_COLOR = new Scalar(0, 255, 0, 255);
-	
+
 	private Mat mRgba;
 	private Mat mGray;
-	
+
 	private int learn_frames = 0;
 	private Mat teplateR;
 	private Mat teplateL;
@@ -35,44 +33,44 @@ public class EyeListener implements CvCameraViewListener2 {
 
 	double xCenter = -1;
 	double yCenter = -1;
-	
+
 	private CascadeClassifier mJavaDetector;
 	private CascadeClassifier mJavaDetectorEye;
-	
+
 	private ImageView hubble;
-	
+
 	int threshold = 20; // distance from eyes from swiching zoomin/zomoout
 	float scaleFactor = .02f; // how fast to zoom
 
-	
-	public void setImageView(ImageView iv){
+	public void setImageView(ImageView iv) {
 		hubble = iv;
 	}
-	
-	public void zoom(int s){
-		if(hubble == null)
+
+	// zoom in on image view, s = 1/-1 (in/out)
+	public void zoom(int s) {
+		if (hubble == null)
 			return;
-		
+
 		float scale;
-		
-		if(s > 0){
+
+		if (s > 0) {
 			scale = 1.0f + scaleFactor;
 		} else {
 			scale = 1.0f - scaleFactor;
 		}
-		
+
 		// scale the image matrix
 		hubble.getImageMatrix().postScale(scale, scale);
-		
+
 		// this will force a redraw in a later cycle (not ui thread)
 		hubble.postInvalidate();
 	}
-	
-	public void setDetectors(CascadeClassifier d, CascadeClassifier e){
+
+	public void setDetectors(CascadeClassifier d, CascadeClassifier e) {
 		mJavaDetector = d;
 		mJavaDetectorEye = e;
 	}
-	
+
 	public void onCameraViewStarted(int width, int height) {
 		mGray = new Mat();
 		mRgba = new Mat();
@@ -86,18 +84,18 @@ public class EyeListener implements CvCameraViewListener2 {
 	public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
 		mGray.release();
 		mRgba.release();
-		
+
 		mRgba = inputFrame.rgba();
 		mGray = inputFrame.gray();
-		
+
 		// transpose 90 degrees
 		Core.transpose(mRgba, mRgba);
 		Core.transpose(mGray, mGray);
-		
+
 		// mirror horizontal
 		Core.flip(mRgba, mRgba, 0);
 		Core.flip(mGray, mGray, 0);
-		
+
 		// mirror vertical
 		Core.flip(mRgba, mRgba, 1);
 		Core.flip(mGray, mGray, 1);
@@ -108,22 +106,21 @@ public class EyeListener implements CvCameraViewListener2 {
 				mAbsoluteFaceSize = Math.round(height * mRelativeFaceSize);
 			}
 		}
-		
+
 		MatOfRect faces = new MatOfRect();
 
 		if (mJavaDetector != null)
-			mJavaDetector.detectMultiScale(mGray, faces, 1.1, 2,
-					2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-					new Size(mAbsoluteFaceSize, mAbsoluteFaceSize),
-					new Size());
+			mJavaDetector.detectMultiScale(mGray, faces, 1.1, 2, 2, // TODO:
+																	// objdetect.CV_HAAR_SCALE_IMAGE
+					new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
 
 		Rect[] facesArray = faces.toArray();
-		
+
 		// no faces, stop here
-		if(facesArray.length == 0){
+		if (facesArray.length == 0) {
 			return mRgba;
 		}
-		
+
 		Core.rectangle(mRgba, facesArray[0].tl(), facesArray[0].br(),
 				FACE_RECT_COLOR, 3);
 		xCenter = (facesArray[0].x + facesArray[0].width + facesArray[0].x) / 2;
@@ -133,11 +130,8 @@ public class EyeListener implements CvCameraViewListener2 {
 		Core.circle(mRgba, center, 10, new Scalar(255, 0, 0, 255), 3);
 
 		Rect r = facesArray[0];
-		// compute the eye area
-		Rect eyearea = new Rect(r.x + r.width / 8,
-				(int) (r.y + (r.height / 4.5)), r.width - 2 * r.width / 8,
-				(int) (r.height / 3.0));
-		// split it
+
+		// split it eye area
 		Rect eyearea_right = new Rect(r.x + r.width / 16,
 				(int) (r.y + (r.height / 4.5)),
 				(r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
@@ -145,10 +139,11 @@ public class EyeListener implements CvCameraViewListener2 {
 				+ (r.width - 2 * r.width / 16) / 2,
 				(int) (r.y + (r.height / 4.5)),
 				(r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
+
 		// draw the area - mGray is working grayscale mat, if you want to
 		// see area in rgb preview, change mGray to mRgba
-		Core.rectangle(mRgba, eyearea_left.tl(), eyearea_left.br(),
-				new Scalar(255, 0, 0, 255), 2);
+		Core.rectangle(mRgba, eyearea_left.tl(), eyearea_left.br(), new Scalar(
+				255, 0, 0, 255), 2);
 		Core.rectangle(mRgba, eyearea_right.tl(), eyearea_right.br(),
 				new Scalar(255, 0, 0, 255), 2);
 
@@ -159,29 +154,29 @@ public class EyeListener implements CvCameraViewListener2 {
 		} else {
 			// Learning finished, use the new templates for template
 			// matching
-			 Rect right = match_eye(eyearea_right, teplateR, method); 
-			 Rect left = match_eye(eyearea_left, teplateL, method);
+			Rect right = match_eye(eyearea_right, teplateR, method);
+			Rect left = match_eye(eyearea_left, teplateL, method);
 
-			 // zoom if we can find both eyes
-			 if(right != null && left != null){
-				 // the vertical distance between eyes
-				 int dist = right.y - left.y;
-				 
-				 if(dist > threshold){
+			// zoom if we can find both eyes
+			if (right != null && left != null) {
+				// the vertical distance between eyes
+				int dist = right.y - left.y;
+
+				if (dist > threshold) {
 					// zoom in, right eye on top
 					zoom(1);
-				 } else if(dist < -threshold) {
+				} else if (dist < -threshold) {
 					// zoom out, left eye on top
 					zoom(-1);
-				 } else {
-					 // do nothing, eyes even
-				 }
-			 }
+				} else {
+					// do nothing, eyes even height
+				}
+			}
 		}
-		
+
 		return mRgba;
 	}
-	
+
 	private Rect match_eye(Rect area, Mat mTemplate, int type) {
 		Point matchLoc;
 		Mat mROI = mGray.submat(area);
@@ -205,9 +200,9 @@ public class EyeListener implements CvCameraViewListener2 {
 
 		Core.rectangle(mRgba, matchLoc_tx, matchLoc_ty, new Scalar(255, 255, 0,
 				255));
-		 Rect rec = new Rect(matchLoc_tx,matchLoc_ty);
-		 
-		 return rec;
+		Rect rec = new Rect(matchLoc_tx, matchLoc_ty);
+
+		return rec;
 	}
 
 	private Mat get_template(CascadeClassifier clasificator, Rect area, int size) {
@@ -231,8 +226,7 @@ public class EyeListener implements CvCameraViewListener2 {
 					(int) (e.height * 0.6));
 			mROI = mGray.submat(eye_only_rectangle);
 			Mat vyrez = mRgba.submat(eye_only_rectangle);
-			
-			
+
 			Core.MinMaxLocResult mmG = Core.minMaxLoc(mROI);
 
 			Core.circle(vyrez, mmG.minLoc, 2, new Scalar(255, 255, 255, 255), 2);
@@ -247,8 +241,8 @@ public class EyeListener implements CvCameraViewListener2 {
 		}
 		return template;
 	}
-	
-	public void reset(){
+
+	public void reset() {
 		// reset learning data, forcing 5 new learning frames
 		learn_frames = 0;
 	}
