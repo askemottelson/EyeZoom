@@ -17,6 +17,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -36,6 +38,12 @@ public class FdActivity extends Activity {
 	private CameraBridgeViewBase mOpenCvCameraView;
 	private EyeListener eyeListener;
 	private File mCascadeFile;
+	
+	private SensorManager mSensorManager;
+	
+	private TouchListener touchListener = new TouchListener();
+	private OnShakeListener shakeListener = new OnShakeListener();
+	
 
 	private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
 
@@ -117,17 +125,25 @@ public class FdActivity extends Activity {
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		setContentView(R.layout.face_detect_surface_view);
 
-		// set hubble background image and touch handler
+		// set hubble background image
 		ImageView imageView = (ImageView) findViewById(R.id.imageView);
-		TouchListener imageViewHandler = new TouchListener();
-		imageViewHandler.setView(imageView);
-
-		imageView.setOnTouchListener(imageViewHandler);
-		Bitmap hubble = BitmapFactory.decodeResource(getResources(),
-				R.drawable.hubble);
+		
+		// shake handler
+	    mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+	    mSensorManager.registerListener(shakeListener, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
+	    shakeListener.mAccel = 0.00f;
+	    shakeListener.mAccelCurrent = SensorManager.GRAVITY_EARTH;
+	    shakeListener.mAccelLast = SensorManager.GRAVITY_EARTH;
+	    shakeListener.setView(imageView);
+	    
+	    // touch handler
+		touchListener.setView(imageView);
+		imageView.setOnTouchListener(touchListener);
+		
+		Bitmap hubble = BitmapFactory.decodeResource(getResources(), R.drawable.hubble);
 		imageView.setImageBitmap(hubble);
 
-		// attach camera to view
+		// camera/eye handler
 		mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.fd_activity_surface_view);
 
 		eyeListener = new EyeListener();
@@ -141,6 +157,8 @@ public class FdActivity extends Activity {
 
 	@Override
 	public void onPause() {
+		mSensorManager.unregisterListener(shakeListener);
+		
 		super.onPause();
 		if (mOpenCvCameraView != null) {
 			mOpenCvCameraView.disableView();
@@ -151,6 +169,8 @@ public class FdActivity extends Activity {
 	public void onResume() {
 		super.onResume();
 		mOpenCvCameraView.enableView();
+		
+		mSensorManager.registerListener(shakeListener, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
 	}
 
 	public void onDestroy() {

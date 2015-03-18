@@ -16,8 +16,8 @@ public class TouchListener implements OnTouchListener {
 	static final int DRAG = 1;
 	int mode = NONE;
 
-	float width = 675; // width of drawable
-	float height = 1300; // height of drawable
+	float width = 1350; // width of drawable
+	float height = 1350; // height of drawable
 
 	PointF start = new PointF();
 
